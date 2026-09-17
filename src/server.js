@@ -1,26 +1,27 @@
-import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
-import helmet from 'helmet';
-import { connectMongoDB } from './db/connectMongoDB.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import { notFoundHandler } from './middleware/notFoundHandler.js';
+import notesRoutes from './routes/notesRoutes.js';
+import express from 'express';
+import connectMongoDB from './db/connectMongoDB.js';
+
+import { errors } from 'celebrate';
 import { logger } from './middleware/logger.js';
-import notesRouter from './routes/notesRoutes.js';
+import { notFoundHandler } from './middleware/notFoundHandler.js';
+import { errorHandler } from './middleware/errorHandler.js';
+
+const PORT = process.env.PORT ?? 3000;
 
 const app = express();
-const PORT = process.env.PORT ?? 3000;
+
 app.use(logger);
-
 app.use(express.json());
-
 app.use(cors());
 
-app.use(helmet());
-
-app.use(notesRouter);
+app.use(notesRoutes);
 
 app.use(notFoundHandler);
+
+app.use(errors());
 
 app.use(errorHandler);
 
