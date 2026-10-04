@@ -137,31 +137,37 @@ export const requestResetEmail = async (req, res) => {
   const { email } = req.body;
 
   const user = await User.findOne({ email });
-  if (!user) {
-    throw createHttpError(404, 'User not found');
+
+  if (user) {
+    if (!JWT_SECRET) {
+      throw createHttpError(500, 'JWT secret is not configured');
+    }
+
+    const resetToken = jwt.sign(
+      { sub: user._id.toString(), email: user.email },
+      JWT_SECRET,
+      { expiresIn: '15m' },
+    );
+
+    const resetUrl = `${process.env.FRONTEND_DOMAIN}/reset-password?token=${resetToken}`;
+
+    const template = await getResetPasswordTemplate();
+    const html = template({
+      name: user.username ?? user.email,
+      link: resetUrl,
+    });
+
+    try {
+      await sendEmail({
+        from: process.env.SMTP_FROM,
+        to: user.email,
+        subject: 'Reset your password',
+        html,
+      });
+    } catch {
+      throw createHttpError(500, 'Failed to send reset password email');
+    }
   }
-
-  if (!JWT_SECRET) {
-    throw createHttpError(500, 'JWT secret is not configured');
-  }
-
-  const token = jwt.sign({ userId: user._id.toString(), email }, JWT_SECRET, {
-    expiresIn: '5m',
-  });
-
-  const resetUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/reset-password?token=${encodeURIComponent(token)}`;
-
-  const template = await getResetPasswordTemplate();
-  const html = template({
-    name: user.username ?? user.email,
-    link: resetUrl,
-  });
-
-  await sendEmail({
-    to: user.email,
-    subject: 'Reset your password',
-    html,
-  });
 
   res.status(200).json({
     message: 'Reset password email sent',
@@ -183,7 +189,7 @@ export const resetPassword = async (req, res) => {
   }
 
   const user = await User.findOne({
-    _id: payload.userId,
+    _id: payload.sub,
     email: payload.email,
   });
 
