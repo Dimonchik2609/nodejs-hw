@@ -31,4 +31,5 @@ router.post(
   celebrate(resetPasswordSchema),
   resetPassword,
 );
+
 export default router;

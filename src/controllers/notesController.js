@@ -9,7 +9,12 @@ export const getAllNotes = async (req, res) => {
   const notesQuery = Note.find({ userId: req.user._id });
 
   if (search) {
-    notesQuery.where({ $text: { $search: search } });
+    notesQuery.where({
+      $or: [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } },
+      ],
+    });
   }
   if (tag) {
     notesQuery.where('tag').equals(tag);
@@ -66,7 +71,7 @@ export const updateNote = async (req, res, next) => {
   const note = await Note.findOneAndUpdate(
     { _id: noteId, userId: req.user._id },
     req.body,
-    { new: true },
+    { returnDocument: 'after' },
   );
 
   if (!note) {
